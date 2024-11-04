@@ -7,4 +7,4 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.body.appendChild(button);
 });
-// a minor change to make github action workflow run
+// a minor change to let Brace know
