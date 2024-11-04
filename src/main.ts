@@ -7,3 +7,4 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.body.appendChild(button);
 });
+// a minor change to make github action workflow run
