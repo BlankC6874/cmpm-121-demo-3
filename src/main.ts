@@ -52,6 +52,14 @@ let playerCoins = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!; // element `statusPanel` is defined in index.html
 statusPanel.innerHTML = "Check out the blue boxes of cache around you!";
 
+// Function to convert latitude/longitude to global grid coordinates
+function _latLngToGrid(lat: number, lng: number) {
+  return {
+    i: Math.floor(lat * 1e4),
+    j: Math.floor(lng * 1e4),
+  };
+}
+
 // Function to add caches to the map based on grid coordinates
 function createCache(gridX: number, gridY: number) {
   // Convert grid coordinates to latitude/longitude bounds
@@ -75,12 +83,26 @@ function createCache(gridX: number, gridY: number) {
       rng([gridX, gridY, "initialValue"].toString()) * 10,
     );
 
+    // Create unique coin identities
+    const _coins = Array.from({ length: coinValue }, (_, serial) => ({
+      i: gridX,
+      j: gridY,
+      serial,
+    }));
+
     // The popup offers a description and buttons
     const popupDiv = document.createElement("div");
     popupDiv.innerHTML = `
                 <div>A cache here at "${gridX},${gridY}". It has <span id="value">${coinValue}</span> coins.</div>
                 <button id="collect">Collect</button>
-                <button id="deposit">Deposit</button>`;
+                <button id="deposit">Deposit</button>
+                <div id="coinList"></div>`;
+
+    // Display the list of coins in the desired format
+    const coinListDiv = popupDiv.querySelector<HTMLDivElement>("#coinList")!;
+    coinListDiv.innerHTML = _coins
+      .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
+      .join("<br>");
 
     // Clicking the collect button transfers coins from the cache to the player
     popupDiv
@@ -93,6 +115,10 @@ function createCache(gridX: number, gridY: number) {
             coinValue.toString();
           statusPanel.innerHTML =
             `${playerPoints} points accumulated, ${playerCoins} coins collected`;
+          coinListDiv.innerHTML = _coins
+            .slice(0, coinValue)
+            .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
+            .join("<br>");
         }
       });
 
@@ -107,6 +133,10 @@ function createCache(gridX: number, gridY: number) {
             coinValue.toString();
           statusPanel.innerHTML =
             `${playerPoints} points accumulated, ${playerCoins} coins collected`;
+          coinListDiv.innerHTML = _coins
+            .slice(0, coinValue)
+            .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
+            .join("<br>");
         }
       });
 
