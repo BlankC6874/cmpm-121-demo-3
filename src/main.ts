@@ -74,6 +74,7 @@ playerMarker.addTo(gameMap);
 // Display the player's points and coins
 const playerPoints = 0;
 let playerCoins = 0;
+const playerInventory: { i: number; j: number; serial: number }[] = [];
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!; // element `statusPanel` is defined in index.html
 statusPanel.innerHTML = "Check out the blue boxes of cache around you!";
 
@@ -136,10 +137,16 @@ function createCache(gridX: number, gridY: number) {
         if (coinValue > 0) {
           coinValue--;
           playerCoins++;
+          const collectedCoin = _coins[coinValue];
+          playerInventory.push(collectedCoin);
           popupDiv.querySelector<HTMLSpanElement>("#value")!.innerHTML =
             coinValue.toString();
           statusPanel.innerHTML =
-            `${playerPoints} points accumulated, ${playerCoins} coins collected`;
+            `${playerPoints} points accumulated, ${playerCoins} coins collected<br>Inventory: ${
+              playerInventory
+                .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
+                .join(", ")
+            }`;
           coinListDiv.innerHTML = _coins
             .slice(0, coinValue)
             .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
@@ -154,10 +161,18 @@ function createCache(gridX: number, gridY: number) {
         if (playerCoins > 0) {
           coinValue++;
           playerCoins--;
+          const depositedCoin = playerInventory.pop();
+          if (depositedCoin) {
+            _coins.push(depositedCoin);
+          }
           popupDiv.querySelector<HTMLSpanElement>("#value")!.innerHTML =
             coinValue.toString();
           statusPanel.innerHTML =
-            `${playerPoints} points accumulated, ${playerCoins} coins collected`;
+            `${playerPoints} points accumulated, ${playerCoins} coins collected<br>Inventory: ${
+              playerInventory
+                .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
+                .join(", ")
+            }`;
           coinListDiv.innerHTML = _coins
             .slice(0, coinValue)
             .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
