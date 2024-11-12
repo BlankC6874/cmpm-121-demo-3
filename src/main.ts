@@ -22,6 +22,31 @@ const TILE_SIZE = 1e-4;
 const AREA_SIZE = 8;
 const CACHE_PROBABILITY = 0.1;
 
+// Function to move the player marker
+function movePlayer(latOffset: number, lngOffset: number) {
+  const currentPos = playerMarker.getLatLng();
+  const newPos = leaflet.latLng(
+    currentPos.lat + latOffset,
+    currentPos.lng + lngOffset,
+  );
+  playerMarker.setLatLng(newPos);
+  gameMap.setView(newPos);
+}
+
+// Event listeners for the control buttons
+document.getElementById("north")!.addEventListener("click", () => {
+  movePlayer(TILE_SIZE, 0);
+});
+document.getElementById("south")!.addEventListener("click", () => {
+  movePlayer(-TILE_SIZE, 0);
+});
+document.getElementById("west")!.addEventListener("click", () => {
+  movePlayer(0, -TILE_SIZE);
+});
+document.getElementById("east")!.addEventListener("click", () => {
+  movePlayer(0, TILE_SIZE);
+});
+
 // Initialize the map (element with id "map" is defined in index.html)
 const gameMap = leaflet.map(document.getElementById("map")!, {
   center: CLASSROOM_LOCATION,
