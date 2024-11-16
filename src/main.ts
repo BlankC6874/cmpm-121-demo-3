@@ -22,6 +22,14 @@ const TILE_SIZE = 1e-4;
 const AREA_SIZE = 8;
 const CACHE_PROBABILITY = 0.1;
 
+// Persistent storage keys
+const STORAGE_KEYS = {
+  PLAYER_POSITION: "playerPosition",
+  PLAYER_COINS: "playerCoins",
+  PLAYER_INVENTORY: "playerInventory",
+  PLAYER_HISTORY: "playerHistory",
+};
+
 // Function to move the player marker
 function movePlayer(latOffset: number, lngOffset: number) {
   const currentPos = playerMarker.getLatLng();
@@ -31,6 +39,7 @@ function movePlayer(latOffset: number, lngOffset: number) {
   );
   playerMarker.setLatLng(newPos);
   gameMap.setView(newPos);
+  updatePlayerHistory(newPos);
 }
 
 // Event listeners for the control buttons
@@ -127,7 +136,9 @@ function createCache(gridX: number, gridY: number) {
     // Display the list of coins in the desired format
     const coinListDiv = popupDiv.querySelector<HTMLDivElement>("#coinList")!;
     coinListDiv.innerHTML = _coins
-      .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
+      .map((coin) =>
+        `<span class="coin" data-i="${coin.i}" data-j="${coin.j}">${coin.i}:${coin.j}#${coin.serial}</span>`
+      )
       .join("<br>");
 
     // Clicking the collect button transfers coins from the cache to the player
@@ -149,8 +160,11 @@ function createCache(gridX: number, gridY: number) {
             }`;
           coinListDiv.innerHTML = _coins
             .slice(0, coinValue)
-            .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
+            .map((coin) =>
+              `<span class="coin" data-i="${coin.i}" data-j="${coin.j}">${coin.i}:${coin.j}#${coin.serial}</span>`
+            )
             .join("<br>");
+          saveGameState();
         }
       });
 
@@ -175,10 +189,26 @@ function createCache(gridX: number, gridY: number) {
             }`;
           coinListDiv.innerHTML = _coins
             .slice(0, coinValue)
-            .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
+            .map((coin) =>
+              `<span class="coin" data-i="${coin.i}" data-j="${coin.j}">${coin.i}:${coin.j}#${coin.serial}</span>`
+            )
             .join("<br>");
+          saveGameState();
         }
       });
+
+    // Clicking a coin identifier centers the map on the coin's home cache
+    coinListDiv.querySelectorAll(".coin").forEach((coinElement) => {
+      coinElement.addEventListener("click", () => {
+        const i = parseInt(coinElement.getAttribute("data-i")!);
+        const j = parseInt(coinElement.getAttribute("data-j")!);
+        const cacheLocation = leaflet.latLng(
+          CLASSROOM_LOCATION.lat + i * TILE_SIZE,
+          CLASSROOM_LOCATION.lng + j * TILE_SIZE,
+        );
+        gameMap.setView(cacheLocation, ZOOM_LEVEL);
+      });
+    });
 
     return popupDiv;
   });
@@ -193,3 +223,84 @@ for (let x = -AREA_SIZE; x < AREA_SIZE; x++) {
     }
   }
 }
+
+// Function to save the game state to local storage
+function saveGameState() {
+  localStorage.setItem(
+    STORAGE_KEYS.PLAYER_POSITION,
+    JSON.stringify(playerMarker.getLatLng()),
+  );
+  localStorage.setItem(STORAGE_KEYS.PLAYER_COINS, playerCoins.toString());
+  localStorage.setItem(
+    STORAGE_KEYS.PLAYER_INVENTORY,
+    JSON.stringify(playerInventory),
+  );
+  localStorage.setItem(
+    STORAGE_KEYS.PLAYER_HISTORY,
+    JSON.stringify(playerHistory),
+  );
+}
+
+// Function to load the game state from local storage
+function loadGameState() {
+  const savedPosition = localStorage.getItem(STORAGE_KEYS.PLAYER_POSITION);
+  if (savedPosition) {
+    const position = JSON.parse(savedPosition);
+    playerMarker.setLatLng(position);
+    gameMap.setView(position);
+  }
+  const savedCoins = localStorage.getItem(STORAGE_KEYS.PLAYER_COINS);
+  if (savedCoins) {
+    playerCoins = parseInt(savedCoins);
+  }
+  const savedInventory = localStorage.getItem(STORAGE_KEYS.PLAYER_INVENTORY);
+  if (savedInventory) {
+    playerInventory.push(...JSON.parse(savedInventory));
+  }
+  const savedHistory = localStorage.getItem(STORAGE_KEYS.PLAYER_HISTORY);
+  if (savedHistory) {
+    playerHistory.push(...JSON.parse(savedHistory));
+    renderPlayerHistory();
+  }
+}
+
+// Function to update the player's movement history
+const playerHistory: leaflet.LatLng[] = [];
+function updatePlayerHistory(position: leaflet.LatLng) {
+  playerHistory.push(position);
+  renderPlayerHistory();
+  saveGameState();
+}
+
+// Function to render the player's movement history
+function renderPlayerHistory() {
+  const polyline = leaflet.polyline(playerHistory, { color: "blue" });
+  polyline.addTo(gameMap);
+}
+
+// Event listener for the sensor button
+document.getElementById("sensor")!.addEventListener("click", () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition((position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const newPos = leaflet.latLng(lat, lng);
+      playerMarker.setLatLng(newPos);
+      gameMap.setView(newPos);
+      updatePlayerHistory(newPos);
+    });
+  } else {
+    alert("Geolocation is not supported by this browser.");
+  }
+});
+
+// Event listener for the reset button
+document.getElementById("reset")!.addEventListener("click", () => {
+  if (confirm("Are you sure you want to erase your game state?")) {
+    localStorage.clear();
+    location.reload();
+  }
+});
+
+// Load the game state when the page loads
+globalThis.addEventListener("load", loadGameState);
