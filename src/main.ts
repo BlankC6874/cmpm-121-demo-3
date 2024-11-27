@@ -95,45 +95,51 @@ function _latLngToGrid(lat: number, lng: number) {
   };
 }
 
-// Function to add caches to the map based on grid coordinates
-function createCache(gridX: number, gridY: number) {
-  // Convert grid coordinates to latitude/longitude bounds
+// Function to initialize cache bounds based on grid coordinates
+function initializeCacheBounds(
+  gridX: number,
+  gridY: number,
+): leaflet.LatLngBounds {
   const origin = CLASSROOM_LOCATION;
-  const bounds = leaflet.latLngBounds([
+  return leaflet.latLngBounds([
     [origin.lat + gridX * TILE_SIZE, origin.lng + gridY * TILE_SIZE],
     [
       origin.lat + (gridX + 1) * TILE_SIZE,
       origin.lng + (gridY + 1) * TILE_SIZE,
     ],
   ]);
+}
 
-  // Add a rectangle to the map to represent the cache
+// Function to add cache rectangle to the map
+function addCacheToMap(bounds: leaflet.LatLngBounds): leaflet.Rectangle {
   const cacheRectangle = leaflet.rectangle(bounds);
   cacheRectangle.addTo(gameMap);
+  return cacheRectangle;
+}
 
-  // Handle interactions with the cache
+// Function to setup popup for cache
+function setupPopupForCache(
+  cacheRectangle: leaflet.Rectangle,
+  gridX: number,
+  gridY: number,
+) {
   cacheRectangle.bindPopup(() => {
-    // Each cache has a random coin value, mutable by the player
     let coinValue = Math.floor(
       rng([gridX, gridY, "initialValue"].toString()) * 10,
     );
-
-    // Create unique coin identities
     const _coins = Array.from({ length: coinValue }, (_, serial) => ({
       i: gridX,
       j: gridY,
       serial,
     }));
 
-    // The popup offers a description and buttons
     const popupDiv = document.createElement("div");
     popupDiv.innerHTML = `
-                <div>A cache here at "${gridX},${gridY}". It has <span id="value">${coinValue}</span> coins.</div>
-                <button id="collect">Collect</button>
-                <button id="deposit">Deposit</button>
-                <div id="coinList"></div>`;
+      <div>A cache here at "${gridX},${gridY}". It has <span id="value">${coinValue}</span> coins.</div>
+      <button id="collect">Collect</button>
+      <button id="deposit">Deposit</button>
+      <div id="coinList"></div>`;
 
-    // Display the list of coins in the desired format
     const coinListDiv = popupDiv.querySelector<HTMLDivElement>("#coinList")!;
     coinListDiv.innerHTML = _coins
       .map((coin) =>
@@ -141,10 +147,9 @@ function createCache(gridX: number, gridY: number) {
       )
       .join("<br>");
 
-    // Clicking the collect button transfers coins from the cache to the player
-    popupDiv
-      .querySelector<HTMLButtonElement>("#collect")!
-      .addEventListener("click", () => {
+    popupDiv.querySelector<HTMLButtonElement>("#collect")!.addEventListener(
+      "click",
+      () => {
         if (coinValue > 0) {
           coinValue--;
           playerCoins++;
@@ -154,9 +159,9 @@ function createCache(gridX: number, gridY: number) {
             coinValue.toString();
           statusPanel.innerHTML =
             `${playerPoints} points accumulated, ${playerCoins} coins collected<br>Inventory: ${
-              playerInventory
-                .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
-                .join(", ")
+              playerInventory.map((coin) =>
+                `${coin.i}:${coin.j}#${coin.serial}`
+              ).join(", ")
             }`;
           coinListDiv.innerHTML = _coins
             .slice(0, coinValue)
@@ -166,12 +171,12 @@ function createCache(gridX: number, gridY: number) {
             .join("<br>");
           saveGameState();
         }
-      });
+      },
+    );
 
-    // Clicking the deposit button transfers coins from the player to the cache
-    popupDiv
-      .querySelector<HTMLButtonElement>("#deposit")!
-      .addEventListener("click", () => {
+    popupDiv.querySelector<HTMLButtonElement>("#deposit")!.addEventListener(
+      "click",
+      () => {
         if (playerCoins > 0) {
           coinValue++;
           playerCoins--;
@@ -183,9 +188,9 @@ function createCache(gridX: number, gridY: number) {
             coinValue.toString();
           statusPanel.innerHTML =
             `${playerPoints} points accumulated, ${playerCoins} coins collected<br>Inventory: ${
-              playerInventory
-                .map((coin) => `${coin.i}:${coin.j}#${coin.serial}`)
-                .join(", ")
+              playerInventory.map((coin) =>
+                `${coin.i}:${coin.j}#${coin.serial}`
+              ).join(", ")
             }`;
           coinListDiv.innerHTML = _coins
             .slice(0, coinValue)
@@ -195,9 +200,9 @@ function createCache(gridX: number, gridY: number) {
             .join("<br>");
           saveGameState();
         }
-      });
+      },
+    );
 
-    // Clicking a coin identifier centers the map on the coin's home cache
     coinListDiv.querySelectorAll(".coin").forEach((coinElement) => {
       coinElement.addEventListener("click", () => {
         const i = parseInt(coinElement.getAttribute("data-i")!);
@@ -212,6 +217,13 @@ function createCache(gridX: number, gridY: number) {
 
     return popupDiv;
   });
+}
+
+// Simplified createCache function
+function createCache(gridX: number, gridY: number) {
+  const bounds = initializeCacheBounds(gridX, gridY);
+  const cacheRectangle = addCacheToMap(bounds);
+  setupPopupForCache(cacheRectangle, gridX, gridY);
 }
 
 // Scan the player's surrounding area for caches to spawn
